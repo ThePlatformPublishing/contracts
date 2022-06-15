@@ -45,7 +45,6 @@ contract ThePlatform is
     );
 
     /// @dev Construtor sets the token and contract URIs
-    /// @param uri_ Base URI for all metadata
     /// @param _contractURI URI with marketplace metadata
     /// @param _name Token name
     /// @param _symbol Token symbol
@@ -69,7 +68,7 @@ contract ThePlatform is
         string calldata _uri
     ) public onlyRole(PUBLISHER_ROLE) {
         if (_maxSupply == 0) revert SupplyMustBeNonZero();
-        if (maxSupplies[_id] > 0) revert DuplicateEdition();
+        if (editions[_id].maxSupply > 0) revert DuplicateEdition();
         if (_royaltyDestination == address(0))
             revert InvalidRoyaltyDestination();
         if (_royaltyPoints > 10000) revert InvalidRoyalties();
@@ -93,10 +92,10 @@ contract ThePlatform is
         uint256 _qty,
         address _dst
     ) public onlyRole(MINTER_ROLE) returns (bool) {
-        uint256 _mintedSupply = totalSupply(_tokenId); /*Check how many have been redeemed already*/
-        if (editions[_id].maxTastingTokens - _mintedSupply < _dsts.length)
+        uint256 _mintedSupply = totalSupply(_id); /*Check how many have been minted already*/
+        if (editions[_id].maxSupply - _mintedSupply < _qty)
             revert InsufficientSupplyRemaining(); /*Only allow up to amount set on mint*/
-        _mint(redeemer[_id], _id, _qty, "");
+        _mint(_dst, _id, _qty, "");
         return true;
     }
 
@@ -139,7 +138,7 @@ contract ThePlatform is
         override(IERC2981Royalties)
         returns (address _receiver, uint256 _royaltyAmount)
     {
-        Edition _edition = editions[_tokenId];
+        Edition memory _edition = editions[_tokenId];
         return (
             _edition.royaltyDestination,
             (_value * _edition.royaltyPoints) / 10000

@@ -36,7 +36,7 @@ contract ThePlatformSale is Ownable {
     EXTERNAL MINTING FUNCTIONS
     *****************/
     function purchaseEdition(uint256 _tokenId, uint256 _qty) external payable {
-        SaleConfig _saleConfig = saleConfig[_tokenId];
+        SaleConfig memory _saleConfig = saleConfig[_tokenId];
         if (
             _saleConfig.saleStart == 0 ||
             _saleConfig.saleStart > block.timestamp
@@ -45,10 +45,10 @@ contract ThePlatformSale is Ownable {
         if (_qty > _saleConfig.limitPerPurchase) revert PurchaseLimitExceeded();
         if (msg.value != (_saleConfig.price * _qty)) revert InsufficientValue();
 
-        if (publication.totalSupply(_tokenId) + _qty) > _limit)
+        if ((publication.totalSupply(_tokenId) + _qty) > _saleConfig.limit)
             revert RoundLimitExceeded();
 
-        (bool _success, ) = saleConfig.ethSink.call{value: msg.value}(""); /*Send ETH to sink first*/
+        (bool _success, ) = _saleConfig.ethSink.call{value: msg.value}(""); /*Send ETH to sink first*/
         if (!_success) revert FailedToSendETH();
 
         if (!publication.mintEdition(_tokenId, _qty, msg.sender))
@@ -59,12 +59,21 @@ contract ThePlatformSale is Ownable {
     CONFIG FUNCTIONS
     *****************/
 
-    function setSaleConfig(uint256 _tokenId, uint256 _price, uint256 _limit, uint256 _limitPerPurchase, address payable _sink, uint256 _saleStart)
-        external
-        onlyOwner
-    {
-      if (_sink == address(0)) revert InvalidSale();
-      saleConfig[_tokenId] = SaleConfig(_price, _limit, _limitPerPurchase, _sink, _saleStart);
+    function setSaleConfig(
+        uint256 _tokenId,
+        uint256 _price,
+        uint256 _limit,
+        uint256 _limitPerPurchase,
+        address payable _sink,
+        uint256 _saleStart
+    ) external onlyOwner {
+        if (_sink == address(0)) revert InvalidSale();
+        saleConfig[_tokenId] = SaleConfig(
+            _price,
+            _limit,
+            _limitPerPurchase,
+            _sink,
+            _saleStart
+        );
     }
-
 }
