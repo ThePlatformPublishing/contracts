@@ -29,7 +29,7 @@ contract ThePlatformSale is Ownable {
     mapping(uint256 => SaleConfig) public saleConfig; /*Token IDs to sale configuration*/
 
     constructor(address _publication) {
-        ThePlatform publication = ThePlatform(_publication);
+        publication = ThePlatform(_publication);
     }
 
     /*****************

@@ -22,6 +22,18 @@ const config = {
     symbol: "TP",
 };
 
+const errorMessages = {
+    maxSupply: "MaxSupplyExceeded()",
+    claimLimit: "ClaimLimitExceeded()",
+    allowListDisabled: "AllowlistDisabled()",
+    publicDisabled: "PublicDisabled()",
+    notOwner: "Ownable: caller is not the owner",
+    invalidSig: "Invalid Signature",
+    sigUsed: "signature used",
+    tokenDNE: "URIQueryForNonexistentToken()",
+    nonEOA: "NonEOADisabled()",
+};
+
 describe("The Platform publication", function () {
     let accounts: SignerWithAddress[];
     let platformFactory: ThePlatform__factory;
@@ -76,6 +88,38 @@ describe("The Platform publication", function () {
         });
     });
 
+    describe("Publishing", function () {
+        it("Should allow permissioned address to publish", async function () {
+            await platformContract.publishEdition(
+                1,
+                config.public,
+                config.sinkAddress,
+                config.royalties,
+                "1.json"
+            );
+            const edition = await platformContract.editions(1);
+            expect(edition.maxSupply).to.equal(config.public);
+            expect(edition.royaltyDestination).to.equal(config.sinkAddress);
+            expect(edition.royaltyPoints).to.equal(config.royalties);
+            expect(edition.uri).to.equal("1.json");
+        });
+
+        it("Does not allow anyone else to publish", async function () {
+            platformContract = await platformContract.connect(accounts[1]);
+            await expect(
+                platformContract.publishEdition(
+                    1,
+                    config.public,
+                    config.sinkAddress,
+                    config.royalties,
+                    "1.json"
+                )
+            ).to.be.revertedWith(
+                `AccessControl: account ${accounts[1].address.toLowerCase()} is missing role ${publisherRole.toLowerCase()}`
+            );
+        });
+    });
+
     describe("Permissioned Minting", function () {
         this.beforeEach(async function () {
             await platformContract.publishEdition(
@@ -90,6 +134,26 @@ describe("The Platform publication", function () {
         it("Should allow permissioned address to mint", async function () {
             await platformContract.mintEdition(1, 10, accounts[1].address);
             expect(await platformContract.totalSupply(1)).to.equal(10);
+        });
+
+        it("Does not allow anyone else to mint", async function () {
+            platformContract = await platformContract.connect(accounts[1]);
+            await expect(
+                platformContract.mintEdition(1, 10, accounts[1].address)
+            ).to.be.revertedWith(
+                `AccessControl: account ${accounts[1].address.toLowerCase()} is missing role ${minterRole.toLowerCase()}`
+            );
+        });
+
+        it("returns token uri based on edition", async function () {
+            await platformContract.mintEdition(1, 10, accounts[1].address);
+            expect(await platformContract.uri(1)).to.equal("1.json");
+        });
+
+        it("Fails to return uri if token does not exist", async function () {
+            await expect(platformContract.uri(1)).to.be.revertedWith(
+                errorMessages.tokenDNE
+            );
         });
     });
 });
