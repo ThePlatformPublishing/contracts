@@ -15,6 +15,7 @@
     ],
     "files": [
         "./hardhat.config.ts",
-        "./helper-hardhat-config.ts"
+        "./helper-hardhat-config.ts",
+        "./types.d.ts"
     ]
 }

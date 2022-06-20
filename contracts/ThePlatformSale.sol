@@ -3,9 +3,11 @@ pragma solidity 0.8.13;
 
 import "./ThePlatform.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 
-error SaleDisabled(uint256 tokenId);
-error InvalidToken(uint256 tokenId);
+error SaleDisabled();
+error InvalidPrice();
 error InvalidSale();
 error FailedToMint();
 error LengthMismatch();
@@ -15,18 +17,20 @@ error RoundLimitExceeded();
 error FailedToSendETH();
 
 contract ThePlatformSale is Ownable {
+    using SafeTransferLib for ERC20;
     /* Track prices and limits for sales*/
     struct SaleConfig {
         uint256 price;
         uint256 limit;
         uint256 limitPerPurchase;
-        address payable ethSink;
+        address paymentRecipient;
         uint256 saleStart;
+        ERC20 paymentToken;
     }
 
     ThePlatform public publication;
 
-    mapping(uint256 => SaleConfig) public saleConfig; /*Token IDs to sale configuration*/
+    mapping(uint256 => SaleConfig) public saleConfigs; /*Token IDs to sale configuration*/
 
     constructor(address _publication) {
         publication = ThePlatform(_publication);
@@ -36,20 +40,21 @@ contract ThePlatformSale is Ownable {
     EXTERNAL MINTING FUNCTIONS
     *****************/
     function purchaseEdition(uint256 _tokenId, uint256 _qty) external payable {
-        SaleConfig memory _saleConfig = saleConfig[_tokenId];
+        SaleConfig memory _saleConfig = saleConfigs[_tokenId];
         if (
             _saleConfig.saleStart == 0 ||
             _saleConfig.saleStart > block.timestamp
-        ) revert SaleDisabled(_tokenId);
-        if (_saleConfig.price == 0) revert InvalidToken(_tokenId); /*Do not allow 0 value purchase. If desired use separate function for free claim*/
+        ) revert SaleDisabled();
         if (_qty > _saleConfig.limitPerPurchase) revert PurchaseLimitExceeded();
-        if (msg.value != (_saleConfig.price * _qty)) revert InsufficientValue();
 
         if ((publication.totalSupply(_tokenId) + _qty) > _saleConfig.limit)
             revert RoundLimitExceeded();
 
-        (bool _success, ) = _saleConfig.ethSink.call{value: msg.value}(""); /*Send ETH to sink first*/
-        if (!_success) revert FailedToSendETH();
+        _saleConfig.paymentToken.safeTransferFrom(
+            msg.sender,
+            _saleConfig.paymentRecipient,
+            _saleConfig.price * _qty
+        );
 
         if (!publication.mintEdition(_tokenId, _qty, msg.sender))
             revert FailedToMint();
@@ -64,16 +69,19 @@ contract ThePlatformSale is Ownable {
         uint256 _price,
         uint256 _limit,
         uint256 _limitPerPurchase,
-        address payable _sink,
+        address _paymentDestination,
+        ERC20 _paymentToken,
         uint256 _saleStart
     ) external onlyOwner {
-        if (_sink == address(0)) revert InvalidSale();
-        saleConfig[_tokenId] = SaleConfig(
+        if (_paymentDestination == address(0)) revert InvalidSale();
+        if (_price == 0) revert InvalidPrice();
+        saleConfigs[_tokenId] = SaleConfig(
             _price,
             _limit,
             _limitPerPurchase,
-            _sink,
-            _saleStart
+            _paymentDestination,
+            _saleStart,
+            _paymentToken
         );
     }
 }
