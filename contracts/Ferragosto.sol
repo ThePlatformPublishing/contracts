@@ -13,7 +13,7 @@ error InvalidRoyalties();
 error InvalidRoyaltyDestination();
 error URIQueryForNonexistentToken();
 
-contract ThePlatform is
+contract Ferragosto is
     ERC1155Supply,
     AccessControl,
     Ownable,
