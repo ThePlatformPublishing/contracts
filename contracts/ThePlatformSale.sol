@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.13;
 
-import "./Ferragosto.sol";
+import "./ThePlatform.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
@@ -16,7 +16,7 @@ error InsufficientValue();
 error RoundLimitExceeded();
 error FailedToSendETH();
 
-contract FerragostoSale is Ownable {
+contract ThePlatformSale is Ownable {
     using SafeTransferLib for ERC20;
     /* Track prices and limits for sales*/
     struct SaleConfig {
@@ -28,12 +28,12 @@ contract FerragostoSale is Ownable {
         ERC20 paymentToken;
     }
 
-    Ferragosto public publication;
+    ThePlatform public publication;
 
     mapping(uint256 => SaleConfig) public saleConfigs; /*Token IDs to sale configuration*/
 
     constructor(address _publication) {
-        publication = Ferragosto(_publication);
+        publication = ThePlatform(_publication);
     }
 
     /*****************
